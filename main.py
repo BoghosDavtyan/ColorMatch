@@ -5,8 +5,36 @@ from kivy.uix.slider import Slider
 from kivy.uix.label import Label
 from kivy.graphics import Color, Rectangle
 from kivy.core.window import Window
+from kivy.clock import Clock
 import random
 
+class ColorDisplay(BoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'horizontal'
+        self.target_color = [0, 0, 0]
+        self.current_color = [0, 0, 0]
+        self.bind(size=self.update_rect, pos=self.update_rect)
+
+        with self.canvas:
+            self.target_rect = Rectangle(pos=self.pos, size=(self.width/2, self.height))
+            self.current_rect = Rectangle(pos=(self.width/2, self.y), size=(self.width/2, self.height))
+
+    def update_rect(self, *args):
+        self.target_rect.pos = self.pos
+        self.target_rect.size = (self.width/2, self.height)
+        self.current_rect.pos = (self.x + self.width/2, self.y)
+        self.current_rect.size = (self.width/2, self.height)
+
+    def update_colors(self, target_color, current_color):
+        self.target_color = target_color
+        self.current_color = current_color
+        self.canvas.clear()
+        with self.canvas:
+            Color(*[x/255 for x in self.target_color])
+            self.target_rect = Rectangle(pos=self.pos, size=(self.width/2, self.height))
+            Color(*[x/255 for x in self.current_color])
+            self.current_rect = Rectangle(pos=(self.x + self.width/2, self.y), size=(self.width/2, self.height))
 
 class ColorMixingGame(BoxLayout):
     def __init__(self, **kwargs):
@@ -18,7 +46,7 @@ class ColorMixingGame(BoxLayout):
         self.target_color = [0, 0, 0]
         self.current_color = [0, 0, 0]
 
-        self.color_display = BoxLayout(size_hint=(1, 0.3))
+        self.color_display = ColorDisplay(size_hint=(1, 0.3))
         self.add_widget(self.color_display)
 
         self.target_label = Label(text="Match the color!", size_hint=(1, 0.1))
@@ -49,22 +77,14 @@ class ColorMixingGame(BoxLayout):
         self.result_label = Label(text="", size_hint=(1, 0.1))
         self.add_widget(self.result_label)
 
-        self.update_color_display()
+        Clock.schedule_once(self.update_color_display, 0)
 
     def on_slider_change(self, instance, value):
-        self.current_color = [self.red_slider.value, self.green_slider.value, self.blue_slider.value]
+        self.current_color = [int(self.red_slider.value), int(self.green_slider.value), int(self.blue_slider.value)]
         self.update_color_display()
 
-    def update_color_display(self):
-        self.color_display.canvas.clear()
-        with self.color_display.canvas:
-            # Target color
-            Color(*[x / 255 for x in self.target_color])
-            Rectangle(pos=self.color_display.pos, size=(self.color_display.width / 2, self.color_display.height))
-            # Current color
-            Color(*[x / 255 for x in self.current_color])
-            Rectangle(pos=(self.color_display.width / 2, self.color_display.y),
-                      size=(self.color_display.width / 2, self.color_display.height))
+    def update_color_display(self, *args):
+        self.color_display.update_colors(self.target_color, self.current_color)
 
     def start_game(self, instance):
         self.target_color = [random.randint(0, 255) for _ in range(3)]
@@ -77,11 +97,9 @@ class ColorMixingGame(BoxLayout):
         similarity = (1 - diff / max_diff) * 100
         self.result_label.text = f"Your match is {similarity:.2f}% accurate!"
 
-
 class ColorMixingApp(App):
     def build(self):
         return ColorMixingGame()
-
 
 if __name__ == '__main__':
     Window.size = (400, 600)
